@@ -1,13 +1,14 @@
 package com.example.demo.services;
 
+import com.example.demo.exceptions.TaskNotFoundException;
 import com.example.demo.model.Task;
 import com.example.demo.model.TaskStatus;
 import com.example.demo.repository.TasksRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -21,8 +22,6 @@ public class TasksService {
     public void addTask(String description) {
         Task task = new Task();
         task.setDescription(description);
-        task.setStatus(TaskStatus.NOT_STARTED);
-        task.setCreationDate(LocalDateTime.now());
         repository.save(task);
     }
 
@@ -30,13 +29,17 @@ public class TasksService {
         return repository.findByStatus(status);
     }
 
-    public void setStatus(Task task, TaskStatus status) {
+    public Task setStatus(Long id, TaskStatus status) throws TaskNotFoundException {
+        Optional<Task> response = repository.findById(id);
+        if (response.isEmpty()) {
+            throw new TaskNotFoundException();
+        }
+
+        Task task = response.get();
         task.setStatus(status);
         repository.save(task);
-    }
 
-    public Task getById(Long id) {
-        return repository.getById(id);
+        return task;
     }
 
     public void deleteById(Long id) {

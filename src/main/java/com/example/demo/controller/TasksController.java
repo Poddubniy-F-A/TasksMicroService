@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import com.example.demo.exceptions.TaskNotFoundException;
 import com.example.demo.model.Task;
 import com.example.demo.model.TaskStatus;
 import com.example.demo.services.TasksService;
@@ -30,8 +31,12 @@ public class TasksController {
     }
 
     @PutMapping("/{id}")
-    public void updateTaskStatus(@PathVariable Long id, @RequestBody TaskStatus status) {
-        service.setStatus(service.getById(id), status);
+    public Task updateTaskStatus(@PathVariable Long id, @RequestBody TaskStatus status) {
+        try {
+            return service.setStatus(id, status);
+        } catch (TaskNotFoundException e) {
+            return null;
+        }
     }
 
     @DeleteMapping("/{id}")

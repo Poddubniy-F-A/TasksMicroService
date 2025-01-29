@@ -16,8 +16,9 @@ public class Task {
     private String description;
 
     @Column
-    private TaskStatus status;
+    @Enumerated(EnumType.STRING)
+    private TaskStatus status = TaskStatus.NOT_STARTED;
 
     @Column
-    private LocalDateTime creationDate;
+    private LocalDateTime creationDate = LocalDateTime.now();
 }
