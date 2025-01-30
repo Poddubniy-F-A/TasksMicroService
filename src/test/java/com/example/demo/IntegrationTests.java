@@ -1,5 +1,8 @@
 package com.example.demo;
 
+import com.example.demo.dto.TaskCreateDTO;
+import com.example.demo.dto.TaskDTO;
+import com.example.demo.dto.TaskUpdateStatusDTO;
 import com.example.demo.exceptions.TaskNotFoundException;
 import com.example.demo.model.Task;
 import com.example.demo.model.TaskStatus;
@@ -10,87 +13,98 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.when;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 public class IntegrationTests {
     @Autowired
     private TasksService service;
-
     @MockitoBean
     private TasksRepository repository;
+    @MockitoBean
+    private TasksService.LogGateway logGateway;
 
     @Test
-    public void testGetAll() {
-        List<Task> tasks = Arrays.asList(new Task(), new Task());
+    void getAll() {
+        List<Task> tasks = List.of(new Task(), new Task());
         when(repository.findAll()).thenReturn(tasks);
 
-        List<Task> result = service.getAll();
+        List<TaskDTO> result = service.getAll();
 
-        assertEquals(tasks, result);
+        assertEquals(result, tasks.stream().map(Task::toTaskDTO).toList());
         verify(repository).findAll();
     }
 
     @Test
-    public void testAddTask() {
-        String description = "some text";
+    void addTask() {
+        String description = "description";
+        TaskCreateDTO taskDTO = new TaskCreateDTO();
+        taskDTO.setDescription(description);
         Task task = new Task();
         task.setDescription(description);
+        when(repository.save(any(Task.class))).thenReturn(task);
 
-        service.addTask(description);
+        TaskDTO result = service.addTask(taskDTO);
 
-        verify(repository).save(task);
+        assertEquals(result, task.toTaskDTO());
+        verify(repository).save(any(Task.class));
+        verify(logGateway).writeToFile(anyString(), anyString());
     }
 
     @Test
-    public void testGetByStatus() {
-        TaskStatus status = TaskStatus.NOT_STARTED;
-        List<Task> tasks = Arrays.asList(new Task(), new Task());
+    void getByStatus() {
+        TaskStatus status = TaskStatus.IN_PROCESS;
+        Task task = new Task();
+        task.setStatus(status);
+        List<Task> tasks = List.of(task);
         when(repository.findByStatus(status)).thenReturn(tasks);
 
-        List<Task> result = service.getByStatus(status);
+        List<TaskDTO> result = service.getByStatus(status);
 
-        assertEquals(tasks, result);
+        assertEquals(result, tasks.stream().map(Task::toTaskDTO).toList());
         verify(repository).findByStatus(status);
     }
 
     @Test
-    public void testSetStatus() throws TaskNotFoundException {
+    void setStatus() throws TaskNotFoundException {
         Long id = 1L;
         TaskStatus status = TaskStatus.IN_PROCESS;
-        Task task = new Task();
+        TaskUpdateStatusDTO updateDTO = new TaskUpdateStatusDTO();
+        updateDTO.setId(id);
+        updateDTO.setStatus(status);
+        Task task = new Task(); //Тестовая задача
         task.setId(id);
-
+        task.setStatus(status);
         when(repository.findById(id)).thenReturn(Optional.of(task));
+        when(repository.save(any(Task.class))).thenReturn(task); // Исправлено
 
-        Task updatedTask = service.setStatus(id, status);
+        TaskDTO result = service.setStatus(updateDTO);
 
-        assertEquals(status, updatedTask.getStatus());
-        verify(repository).save(task);
+        assertEquals(result, task.toTaskDTO());
+        verify(repository).save(any(Task.class));
+        verify(logGateway).writeToFile(anyString(), anyString());
     }
 
     @Test
-    public void testSetStatus_TaskNotFound() {
+    void setStatusIncorrect() {
         Long id = 1L;
-        TaskStatus status = TaskStatus.IN_PROCESS;
-
+        TaskUpdateStatusDTO updateDTO = new TaskUpdateStatusDTO();
+        updateDTO.setId(id);
+        updateDTO.setStatus(TaskStatus.IN_PROCESS);
         when(repository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(TaskNotFoundException.class, () -> service.setStatus(id, status));
-        verify(repository, never()).save(any());
+        assertThrows(TaskNotFoundException.class, () -> service.setStatus(updateDTO));
+        verify(repository).findById(id);
     }
 
     @Test
-    public void testDeleteById() {
+    void deleteById() {
         Long id = 1L;
 
         service.deleteById(id);

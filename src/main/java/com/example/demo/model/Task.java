@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.example.demo.dto.TaskDTO;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -21,4 +22,12 @@ public class Task {
 
     @Column
     private LocalDateTime creationDate = LocalDateTime.now();
+
+    public TaskDTO toTaskDTO() {
+        TaskDTO taskDTO = new TaskDTO();
+        taskDTO.setDescription(description);
+        taskDTO.setStatus(status);
+        taskDTO.setCreationDate(creationDate);
+        return taskDTO;
+    }
 }
